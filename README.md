@@ -1,0 +1,835 @@
+[index.html](https://github.com/user-attachments/files/27732988/index.html)
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Auditoría de Riesgos</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-authentication-library/2.38.0/msal-browser.min.js"></script>
+<style>
+:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#232736;--border:#2e3245;--accent:#f0c040;--malo:#ef4444;--regular:#f97316;--bueno:#22c55e;--mb:#3b82f6;--text:#e8eaf0;--muted:#6b7280;--r:12px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;}
+
+/* HEADER */
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 14px;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;}
+.title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--accent);}
+.pill{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);}
+.pill b{color:var(--accent);}
+
+/* TABS */
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);}
+.tab{flex:1;padding:12px 8px;background:none;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+.tab.on{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* META */
+.meta{padding:12px 14px 0;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.grid1{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:8px;}
+.fld{display:flex;flex-direction:column;gap:3px;}
+.fld label{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);}
+.fld input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;}
+.fld input:focus{border-color:var(--accent);}
+
+/* CATEGORY */
+.cat-hdr{padding:16px 14px 5px;display:flex;align-items:center;gap:8px;}
+.cat-lbl{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);opacity:.7;}
+.cat-line{flex:1;height:1px;background:var(--border);}
+
+/* ITEM CARD */
+.card{margin:0 14px 4px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);}
+.card.rm{border-left:3px solid var(--malo);}
+.card.rr{border-left:3px solid var(--regular);}
+.card.rb{border-left:3px solid var(--bueno);}
+.card.rmb{border-left:3px solid var(--mb);}
+.card-top{padding:10px 13px 7px;display:flex;gap:9px;}
+.num{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);padding-top:2px;min-width:18px;}
+.lbl{flex:1;font-size:13px;line-height:1.4;}
+
+/* RATING */
+.rrow{padding:0 13px 9px 40px;display:flex;gap:5px;}
+.rbtn{flex:1;padding:7px 2px;border-radius:7px;border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;cursor:pointer;text-align:center;transition:all .15s;}
+.rbtn:active{transform:scale(.95);}
+.rbtn[data-v="M"].on{background:var(--malo);border-color:var(--malo);color:#fff;}
+.rbtn[data-v="R"].on{background:var(--regular);border-color:var(--regular);color:#fff;}
+.rbtn[data-v="B"].on{background:var(--bueno);border-color:var(--bueno);color:#fff;}
+.rbtn[data-v="MB"].on{background:var(--mb);border-color:var(--mb);color:#fff;}
+.rbtn[data-v="NA"].on{background:#6b7280;border-color:#6b7280;color:#fff;}
+
+/* OBS */
+.obs-sec{padding:0 13px 8px 13px;}
+.obs-tog{background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:2px 0 5px 27px;font-family:'DM Sans',sans-serif;text-decoration:underline;text-underline-offset:2px;}
+.obs-tog:hover{color:var(--text);}
+.obs-body{display:none;padding-bottom:4px;}
+.obs-body.open{display:block;}
+textarea.obs{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:7px 9px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;resize:none;outline:none;height:50px;}
+textarea.obs:focus{border-color:var(--accent);}
+
+/* REC PANEL */
+.rpanel{margin:0 14px 10px;background:#1e1a0e;border:1px solid #5a4010;border-top:none;border-radius:0 0 var(--r) var(--r);padding:11px 13px 13px;display:none;}
+.rpanel.open{display:block;}
+.rp-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.rp-ttl{font-size:11px;font-weight:500;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;}
+.rp-ttl::before{content:'⚡ ';}
+.ai-btn{background:var(--accent);color:#0f1117;border:none;border-radius:6px;padding:5px 9px;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;cursor:pointer;}
+.ai-btn:disabled{opacity:.5;cursor:default;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.ai-btn.ld::after{content:'';display:inline-block;width:9px;height:9px;border:2px solid #0f1117;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite;margin-left:4px;}
+
+/* REC PICKER */
+.picker-wrap{margin-bottom:10px;}
+.picker-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:#8a7040;margin-bottom:5px;}
+.picker-list{display:flex;flex-direction:column;gap:5px;max-height:240px;overflow-y:auto;}
+.picker-item{background:#2a2210;border:1px solid #5a4010;border-radius:8px;padding:8px 10px;cursor:pointer;transition:border-color .15s;}
+.picker-item:hover{border-color:var(--accent);}
+.picker-item.used{border-color:#22c55e;opacity:.6;}
+.pi-prio{font-family:'DM Mono',monospace;font-size:9px;font-weight:500;margin-bottom:3px;}
+.pi-prio.alta{color:var(--malo);}
+.pi-prio.media{color:var(--regular);}
+.pi-prio.baja{color:var(--bueno);}
+.pi-text{font-size:11px;color:#c8b87a;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+
+/* RECS LIST */
+.recs-list{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+.rec-item{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:9px 11px;}
+.ri-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.ri-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--accent);}
+.ri-del{background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1;padding:0;}
+.ri-del:hover{color:var(--malo);}
+.rec-item textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:7px 9px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;resize:none;outline:none;height:70px;margin-bottom:6px;}
+.rec-item textarea:focus{border-color:var(--accent);}
+.prio-row{display:flex;gap:5px;}
+.pb{flex:1;padding:5px 2px;border-radius:6px;border:1.5px solid var(--border);background:var(--bg);color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;cursor:pointer;text-align:center;}
+.pb.a{background:var(--malo);border-color:var(--malo);color:#fff;}
+.pb.m{background:var(--regular);border-color:var(--regular);color:#fff;}
+.pb.b{background:var(--bueno);border-color:var(--bueno);color:#fff;}
+
+.add-btn{width:100%;padding:7px;background:none;border:1px dashed var(--border);border-radius:8px;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;margin-bottom:10px;}
+.add-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* PHOTOS */
+.photo-sec{margin-top:2px;}
+.sec-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-bottom:5px;display:block;}
+.photo-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+.ph-thumb{position:relative;width:68px;height:68px;border-radius:8px;overflow:hidden;border:1px solid var(--border);flex-shrink:0;}
+.ph-thumb img{width:100%;height:100%;object-fit:cover;}
+.ph-del{position:absolute;top:2px;right:2px;background:rgba(0,0,0,.75);border:none;color:#fff;font-size:13px;width:18px;height:18px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;}
+label.ph-btn{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--muted);font-size:12px;cursor:pointer;transition:border-color .2s;}
+label.ph-btn:hover{border-color:var(--accent);color:var(--text);}
+input.ph-in{display:none;}
+
+/* SUMMARY */
+.tab-panel{display:none;}
+.tab-panel.on{display:block;}
+.sum-wrap{padding:14px;}
+.sum-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px;}
+.sum-card h3{font-family:'Syne',sans-serif;font-size:13px;color:var(--accent);margin-bottom:10px;}
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;}
+.sbox{background:var(--surface2);border-radius:8px;padding:9px 4px;text-align:center;}
+.sv{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;line-height:1;}
+.sl{font-size:9px;text-transform:uppercase;color:var(--muted);margin-top:3px;}
+.sbox.m .sv{color:var(--malo);}.sbox.r .sv{color:var(--regular);}.sbox.b .sv{color:var(--bueno);}.sbox.mb .sv{color:var(--mb);}
+.exp-bar{padding:4px 14px 24px;}
+.exp-btn{width:100%;padding:13px;background:var(--accent);color:#0f1117;border:none;border-radius:var(--r);font-family:'Syne',sans-serif;font-size:14px;font-weight:800;cursor:pointer;margin-bottom:10px;}
+.exp-btn:hover{opacity:.9;}
+.od-btn{width:100%;padding:13px;background:#0078d4;color:#fff;border:none;border-radius:var(--r);font-family:'Syne',sans-serif;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;}
+.od-btn:hover{opacity:.9;}
+.od-btn:disabled{opacity:.5;cursor:default;}
+.od-status{margin-top:8px;padding:10px 12px;border-radius:8px;font-size:12px;text-align:center;display:none;}
+.od-status.ok{background:#14532d;color:#86efac;display:block;}
+.od-status.err{background:#450a0a;color:#fca5a5;display:block;}
+.od-status.ld{background:var(--surface2);color:var(--muted);display:block;}
+.od-user{font-size:11px;color:var(--muted);text-align:center;margin-top:6px;display:none;}
+.spacer{height:22px;}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;align-items:flex-end;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--surface);border-radius:16px 16px 0 0;padding:18px 16px 28px;width:100%;max-height:85vh;overflow-y:auto;}
+.modal-ttl{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--accent);margin-bottom:3px;}
+.modal-sub{font-size:12px;color:var(--muted);margin-bottom:14px;}
+.modal-close{float:right;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;margin-top:-2px;}
+.modal-item{background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;margin-bottom:7px;cursor:pointer;}
+.modal-item:hover{border-color:var(--accent);}
+.modal-item .mp{font-family:'DM Mono',monospace;font-size:9px;font-weight:500;margin-bottom:3px;}
+.mp.a{color:var(--malo);}.mp.m{color:var(--regular);}.mp.b{color:var(--bueno);}
+.modal-item .mt{font-size:12px;color:var(--text);line-height:1.5;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="title">⬡ Auditoría</div>
+  <div class="pill"><b id="doneN">0</b>/<b id="totalN">0</b> calificados</div>
+</div>
+<div class="tabs">
+  <button class="tab on" onclick="switchTab('inc')">🔥 Incendio</button>
+  <button class="tab" onclick="switchTab('seg')">🔒 Seg. Física</button>
+  <button class="tab" onclick="switchTab('sum')">📊 Resumen</button>
+</div>
+
+<div id="tab-inc" class="tab-panel on"></div>
+<div id="tab-seg" class="tab-panel"></div>
+<div id="tab-sum" class="tab-panel"></div>
+
+<!-- MODAL for rec picker -->
+<div class="modal-bg" id="modal-bg" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModalDirect()">×</button>
+    <div class="modal-ttl" id="modal-ttl"></div>
+    <div class="modal-sub">Seleccioná una recomendación base del historial</div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<script>
+// ─── REC BANK ──────────────────────────────────────────────────────────────────
+const RB = {"planes de emergencia":[{"text":"El plano de evacuación de la oficina comercial no se encuentra actualizado, en tanto no refleja la totalidad de los extintores portátiles actualmente instalados en el sector. Esta desviación puede generar demoras o confusión en caso de emergencia, dificultando la adecuada identificación y el acceso oportuno a los equipos de primera intervención por parte del personal. Se recomienda la actualización y revisión del plano de evacuación, incorporando la ubicación real de todos los extintores portátiles existentes en la oficina comercial.","priority":"MEDIA"},{"text":"Los sectores de oficina cuentan con planos de emergencia desactualizados, que no reflejan la totalidad de los detectores de incendio ni la cantidad de extintores actualmente instalados. Esta inconsistencia puede generar confusión durante una emergencia, afectando la correcta identificación de equipos de protección y las rutas de respuesta. Se recomienda proceder a la revisión y actualización integral de los planos de emergencia, incorporando la ubicación real y vigente de todos los sistemas de detección, alarma y extinción.","priority":"MEDIA"},{"text":"Los planos de evacuación tanto de la oficina comercial como de los sectores exteriores no se encuentran actualizados, dado que no reflejan la totalidad de los extintores portátiles actualmente instalados en el sector. Esta discrepancia puede generar demoras o confusión durante una emergencia. Se recomienda proceder a la revisión y actualización de los planos de evacuación, incorporando la ubicación real de todos los extintores portátiles existentes.","priority":"MEDIA"},{"text":"Los planos de evacuación no se encuentran disponibles en los sectores de oficinas, lo que puede dificultar la orientación del personal y visitantes durante una emergencia. Se recomienda instalar planos de evacuación actualizados en lugares visibles, asegurando que reflejen las rutas de escape, salidas de emergencia y ubicación de equipos de protección contra incendios.","priority":"MEDIA"}],"extintores":[{"text":"La sala de telecomunicaciones cuenta con un matafuego de polvo químico, agente que resulta inadecuado para este tipo de recintos por su carácter corrosivo y potencial daño a equipos electrónicos sensibles. Se recomienda instalar un extintor a base de agente limpio tipo HCFC en las inmediaciones del acceso, debidamente señalizado y accesible, a fin de asegurar una intervención eficaz sin afectar los equipos electrónicos.","priority":"MEDIA"},{"text":"La playa de almacenamiento exterior de transformadores no cuenta con carros extintores de 50 litros, lo que limita la capacidad de respuesta ante incendios incipientes, especialmente considerando la presencia de aceites combustibles. Se recomienda incorporar carros extintores de 50 litros con agente espumógeno tipo AFFF, aptos para fuegos de líquidos combustibles (Clase B), ubicados estratégicamente y debidamente señalizados.","priority":"ALTA"},{"text":"El sector de depósito de bushings no cuenta con un carro extintor de espuma AFFF de 50 litros en sus inmediaciones, lo que puede demorar la respuesta ante un incendio incipiente. Se recomienda disponer un carro extintor de espuma AFFF de 50 litros en el propio sector, estratégicamente ubicado y señalizado.","priority":"MEDIA"},{"text":"La sala de telecomunicaciones no cuenta con un extintor a base de agente limpio (HCFC o equivalente). Se recomienda instalar un extintor de agente limpio adecuado en las inmediaciones del acceso, debidamente señalizado y accesible.","priority":"MEDIA"},{"text":"La sala de telecomunicaciones cuenta con un extintor adecuado, pero ubicado dentro del recinto, lo que puede dificultar su acceso inmediato en caso de emergencia. Se recomienda reubicar el extintor en el exterior del recinto, en proximidad a la puerta de acceso, debidamente señalizado.","priority":"MEDIA"}],"sistema de detección de humo":[{"text":"El sistema de detección no cuenta con un módulo de comunicación para el monitoreo remoto de señales desde el COS. Esta condición limita la recepción centralizada de alarmas, fallas y eventos del sistema, reduciendo la capacidad de respuesta temprana. Se recomienda incorporar un módulo de comunicación 4G/5G con SIM dedicada, compatible con el sistema existente y vinculado al COS, a fin de permitir el monitoreo permanente de señales de alarma, supervisión y falla.","priority":"ALTA"},{"text":"El panel de alarma de incendios presenta fallas asociadas a los sensores de barrera instalados en el depósito, producto del aumento en la altura de almacenamiento de las estibas, lo cual interfiere con el haz de detección y compromete el correcto funcionamiento del sistema. Se recomienda elevar la altura de instalación de los detectores de barrera a fin de asegurar la no interrupción del haz de detección y restituir la cobertura efectiva del sistema.","priority":"ALTA"},{"text":"Los sensores de detección de llama tipo UV/IR instalados en la playa exterior de transformadores se encuentran mal orientados, no estando direccionados hacia las estibas de transformadores, lo que compromete la detección temprana de eventos. Se recomienda reorientar correctamente los sensores para asegurar la cobertura directa de las áreas protegidas.","priority":"ALTA"},{"text":"El sistema de detección registra reportes de fallas y presenta alarmas activas, lo que compromete su confiabilidad y la capacidad de detección temprana. Se recomienda identificar y corregir a la brevedad las causas de las fallas, restituyendo la operatividad total del sistema.","priority":"ALTA"}],"salas de control / sala de servidores":[{"text":"Dentro de la sala de telecomunicaciones se detecta la presencia de ventiladores, aspiradoras y lockers para el guardado de ropa ajenos a la operación de la sala, lo que incrementa innecesariamente la carga de fuego. Se recomienda retirar de forma inmediata todo material ajeno al sector y establecer controles internos para evitar su reutilización como área de almacenamiento.","priority":"ALTA"},{"text":"Los racks de telecomunicaciones se encuentran instalados dentro de un área de oficinas compartida, en proximidad a materiales combustibles y sin un control de accesos específico. Se recomienda relocalizar los racks a una sala técnica dedicada, con adecuado cerramiento, control de accesos y condiciones ambientales controladas.","priority":"MEDIA"},{"text":"La sala de IT no cuenta con un agente extintor ubicado en el acceso, lo que limita la capacidad de respuesta ante un conato de incendio. Se recomienda instalar un extintor de agente limpio (HCFC o equivalente), ubicado en las inmediaciones de la puerta de acceso, debidamente señalizado y accesible.","priority":"ALTA"},{"text":"La caseta de comunicaciones presenta el sistema de aire acondicionado fuera de servicio, acumulación de pallets en su interior y ausencia de un sistema de detección automática de incendios. Se recomienda restituir el funcionamiento del sistema de climatización, retirar los materiales combustibles almacenados y evaluar la instalación de un sistema de detección automática acorde al riesgo del recinto.","priority":"MEDIA"}],"sala de ti":[{"text":"La puerta de acceso a la sala de telecomunicaciones no cuenta con control de acceso y se encuentra permanentemente abierta. La ausencia de controles incrementa la exposición frente a ingresos no autorizados. Se recomienda reforzar la seguridad mediante la instalación de control de acceso restringido (tarjeta, código o biometría), sensor de apertura vinculado al sistema de alarma, cierre automático y registro de ingresos.","priority":"ALTA"},{"text":"El rack de telecomunicaciones se encuentra ubicado dentro del sector de oficinas, sin protección específica mediante sistema de detección de intrusión ni cobertura de CCTV. La climatización depende del aire acondicionado general de oficinas, no diseñado para servicio continuo. Se recomienda implementar medidas específicas de seguridad para el recinto e instalar un sistema de aire acondicionado independiente con operación continua.","priority":"MEDIA"},{"text":"La sala de TI presenta una temperatura elevada, con equipos de climatización operando de manera incorrecta o con set points inadecuados, lo que compromete el correcto funcionamiento de los equipos. Se recomienda ajustar el funcionamiento de los equipos de aire acondicionado e implementar un sistema de monitoreo continuo de temperatura con alarmas locales y remotas ante desvíos.","priority":"ALTA"},{"text":"La sala de telecomunicaciones no cuenta con control de accesos y se encuentra abierta al momento de la inspección. Se recomienda implementar un sistema de control de accesos que restrinja el ingreso únicamente a personal autorizado.","priority":"ALTA"},{"text":"Las puertas de acceso a la sala de telecomunicaciones no cuentan con control de accesos y se encuentran permanentemente abiertas. Se recomienda instalar control de acceso restringido, sensor de apertura vinculado al sistema de alarma, cierre automático y registro de ingresos.","priority":"ALTA"}],"sistemas de detección y alarma":[{"text":"El lindero derecho colinda con una vivienda cuyos techos generan una condición favorable para el acceso no autorizado a la cubierta del edificio. Se recomienda la instalación de una barrera electrónica de intrusión sobre el perímetro comprometido, integrada al sistema de alarma y monitoreo.","priority":"MEDIA"},{"text":"El sistema de seguridad física, compuesto por barreras perimetrales, sensores de movimiento (PIR) y sensores de contacto en las puertas principales de ingreso, se encuentra fuera de servicio. Se recomienda restituir a la mayor brevedad la operatividad del sistema en su totalidad, verificando el correcto funcionamiento de cada componente.","priority":"MEDIA"},{"text":"El perímetro del predio cuenta con barreras infrarrojas instaladas junto a los muros perimetrales que no se encuentran operativas. Se recomienda restituir la operatividad del sistema, verificando alineación, calibración y estado de todos sus componentes, e implementar un programa de mantenimiento preventivo y pruebas periódicas.","priority":"MEDIA"},{"text":"La planta no cuenta con un sistema de monitoreo. Se recomienda implementar un sistema de detección de intrusiones, incorporando sensores de movimiento y barreras perimetrales que permitan la detección temprana de accesos no autorizados.","priority":"MEDIA"},{"text":"En el lindero derecho, el edificio cuenta con un patio interno de fácil acceso desde los predios vecinos. Se recomienda incorporar barreras infrarrojas u otros sistemas de detección de intrusos en dicho sector, integrados al sistema de monitoreo.","priority":"ALTA"}],"almacenamiento y manejo de inflamables":[{"text":"En el sector posterior se almacenan pequeñas cantidades de líquidos inflamables con bateas plásticas de contención no resistentes al fuego. Se recomienda reubicar dichos líquidos inflamables dentro de los gabinetes ignífugos disponibles en los sectores de depósitos, diseñados específicamente para el almacenamiento seguro de este tipo de sustancias.","priority":"ALTA"},{"text":"Los almacenamientos exteriores de aceite dieléctrico no cuentan con diques de contención adecuados para controlar derrames de magnitud, lo que incrementa el riesgo de propagación en caso de incendio. Se recomienda diseñar e implementar diques de contención dimensionados para el volumen máximo almacenado, considerando escenarios de falla catastrófica.","priority":"MEDIA"}],"protección de aberturas":[{"text":"Varias ventanas del sector de depósito y algunas ventanas de las oficinas no cuentan con protecciones físicas adecuadas. Se recomienda implementar medidas correctivas consistentes en la colocación de rejas metálicas u otros elementos de protección equivalentes en las aberturas vulnerables.","priority":"ALTA"},{"text":"La salida de emergencia en el sector de estacionamiento presenta una falla en su sistema de cierre, permaneciendo abierta y sin posibilidad de asegurarse correctamente. Se recomienda reparar o reemplazar el sistema de cierre de la puerta a la brevedad, asegurando que permanezca cerrada en condiciones normales sin afectar su apertura en caso de emergencia.","priority":"ALTA"},{"text":"Las ventanas ubicadas sobre el lindero derecho, correspondientes al sector de baños, se encuentran abiertas y sin protección física mediante rejas metálicas. Se recomienda la instalación de rejas metálicas u otros sistemas de protección equivalentes en dichas aberturas.","priority":"ALTA"},{"text":"Las ventanas del edificio presentan condiciones dispares de protección física. Se recomienda unificar el criterio de protección incorporando sistemas adecuados (rejas metálicas u otros equivalentes) en aquellas aberturas que no cuenten con resguardo.","priority":"MEDIA"},{"text":"Las aberturas ubicadas sobre el patio interno no cuentan con protecciones físicas tipo rejas. Se recomienda incorporar protecciones físicas en dichas aberturas (rejas metálicas).","priority":"ALTA"}],"vigilancia y monitoreo":[{"text":"El sistema de monitoreo por CCTV presenta sectores no cubiertos en el patio interno posterior y la cámara exterior ubicada sobre el acceso principal se encuentra fuera de servicio. Se recomienda ampliar la cobertura del sistema de CCTV incorporando cámaras adicionales para eliminar los puntos ciegos identificados y proceder a la reparación o reemplazo de la cámara fuera de servicio.","priority":"MEDIA"},{"text":"El sistema de monitoreo por cámaras no cubre actualmente el sector exterior de ciertos accesos, generando puntos ciegos en la vigilancia. Se recomienda extender la cobertura del sistema de CCTV mediante la instalación de cámaras adicionales, asegurando una adecuada visualización del área.","priority":"MEDIA"},{"text":"El predio no cuenta con un sistema integral de monitoreo mediante cámaras de CCTV. Se recomienda implementar un sistema de CCTV que cubra la totalidad del perímetro y los sectores críticos del predio, asegurando visualización continua y registro de eventos.","priority":"MEDIA"},{"text":"La cámara de vigilancia presenta un ángulo de enfoque inadecuado y no se encuentra reportando al centro de monitoreo. Se recomienda ajustar la inclinación y el ángulo de la cámara para asegurar una adecuada visualización del sector, así como verificar su correcta integración al sistema.","priority":"ALTA"}],"perímetro exterior":[{"text":"El perímetro exterior presenta muros de distintas alturas y carece de coronamiento con alambre de púas. Asimismo, se verifican faltantes en los premoldeados de hormigón del cerramiento. Se recomienda uniformar la altura de los muros, completar el cerramiento incorporando coronamiento de alambre de púas o concertina, y reparar los tramos faltantes para restituir la integridad del perímetro.","priority":"ALTA"},{"text":"El perímetro exterior ha sido vulnerado en varios sectores, presentando reparaciones provisorias. El crecimiento de vegetación sobre el cerramiento puede deteriorarlo progresivamente. Se recomienda reforzar integralmente el perímetro, eliminando reparaciones provisorias, controlando la vegetación, y adoptando soluciones de mayor robustez en reemplazo del cerramiento actual.","priority":"ALTA"},{"text":"El perímetro exterior presenta una altura limitada y no cuenta con alambre de púas en su coronamiento. Se recomienda aumentar la altura del cerramiento perimetral y complementar con un sistema de coronamiento de alambre de púas o concertina.","priority":"ALTA"}],"rociadores automáticos":[{"text":"El sistema de rociadores automáticos no se encuentra adecuado a los riesgos actuales de la planta, ya que fue diseñado para una ocupación anterior. Se evidencian limitaciones en bombas, reservas de agua y mantenimiento. Se recomienda realizar una reevaluación integral y proceder a su rediseño completo en función de los riesgos actuales, asegurando el cumplimiento de NFPA 13, 14 y 20.","priority":"MEDIA"},{"text":"La planta no cuenta con un sistema de rociadores automáticos, lo que limita la capacidad de control y supresión temprana de incendios. Se recomienda evaluar el diseño e instalación de un sistema de rociadores automáticos conforme a criterios de NFPA 13, adecuado a la ocupación y riesgos específicos del sitio.","priority":"ALTA"}],"red de incendio":[{"text":"El tanque de agua de la reserva exclusiva de incendios presenta un avanzado estado de corrosión, comprometiendo su integridad estructural. Se recomienda proceder al rediseño integral de la instalación, incluyendo la evaluación estructural del tanque y su eventual reemplazo.","priority":"MEDIA"},{"text":"La planta no cuenta con un sistema de hidrantes, lo que limita significativamente la capacidad de respuesta manual ante incendios. Se recomienda diseñar e instalar un sistema de hidrantes conforme a los criterios de NFPA aplicables, contemplando cobertura de áreas críticas, caudales y presiones requeridas.","priority":"ALTA"},{"text":"El sistema de red de incendio cuenta con válvulas con capacidad de monitoreo que no se encuentran supervisadas y los paneles de control de las bombas no disponen de alarmas vinculadas al centro de vigilancia. Se recomienda integrar la supervisión de válvulas al sistema de detección y vincular los paneles de control de bombas al centro de vigilancia.","priority":"MEDIA"},{"text":"El sistema de red de incendio cuenta con dos bombas eléctricas y no dispone de una fuente de alimentación desde un grupo generador de emergencia. Se recomienda incorporar una fuente de energía alternativa para el sistema de bombeo (grupo electrógeno o bomba accionada por motor diésel).","priority":"ALTA"}],"cargadores autos eléctricos / autoelevadores":[{"text":"Los espacios destinados al estacionamiento de vehículos eléctricos no contemplan una separación adicional respecto de las plazas convencionales. Se recomienda reevaluar la disposición de las plazas incorporando una separación adicional de aproximadamente un metro respecto de las distancias normales, así como dotar el sector de medios de respuesta específicos para baterías de ion-litio.","priority":"MEDIA"}],"linderos":[{"text":"En la esquina sur del predio, un vecino desarrolla actividades de reparación de vehículos, generando construcciones provisorias adosadas al alambrado perimetral con materiales combustibles en proximidad directa. Se recomienda gestionar con el vecino y/o autoridades el retiro de las estructuras y materiales adosados al perímetro, estableciendo una franja de seguridad libre de elementos combustibles.","priority":"ALTA"}],"autoinspecciones":[{"text":"Se evidencia la presencia de un árbol dañado sobre el lindero que ha caído sobre el muro perimetral sin ser intervenido, evidenciando una deficiencia en las inspecciones periódicas. Se recomienda retirar el árbol caído, reparar los daños en el cerramiento perimetral, e implementar un programa periódico de inspección y mantenimiento del predio.","priority":"MEDIA"}],"instalación eléctrica":[{"text":"Los sectores de depósito cuentan con luminarias tipo halógenas, las cuales presentan un potencial de incendio ya que en caso de rotura pueden caer sobre materiales combustibles. Se recomienda reemplazarlas por luminarias frías tipo LED, a fin de reducir el riesgo de ignición.","priority":"MEDIA"}],"almacenamiento exterior":[{"text":"Los sectores exteriores presentan una condición general deficiente, con pasto crecido, vehículos fuera de servicio en estado de desarme y acumulación de chatarra. Se recomienda implementar un programa de orden y limpieza que incluya el desmalezado periódico, el retiro de chatarra y vehículos en desuso, manteniendo despejadas las visuales en todo el perímetro.","priority":"ALTA"}],"mantenimiento de sistemas de incendio":[{"text":"Los reportes de mantenimiento del sistema de detección no reflejan las fallas reales. No se dispone de registros de mantenimiento del sistema de bombeo contra incendio, incluyendo arranques de prueba mensuales. Se recomienda incluir toda falla en los reportes trimestrales y documentar los registros del sistema de bombeo.","priority":"MEDIA"}],"orden y limpieza":[{"text":"En los sectores de oficina se detectan mercaderías combustibles directamente por debajo de un tablero eléctrico. Esta condición incrementa significativamente el riesgo de incendio. Se recomienda retirar de forma inmediata todo material combustible de las inmediaciones del tablero eléctrico y señalizar claramente la prohibición de almacenamiento en torno a tableros.","priority":"ALTA"}],"prohibición de fumar":[{"text":"Dentro de la sala de IT se encuentran ceniceros con restos de cigarrillos y en la salida de emergencia se identifican colillas. Se recomienda prohibir y eliminar esta práctica en dichos sectores, reforzando la señalización y los controles correspondientes, y habilitando áreas específicas para fumadores en sectores exteriores alejados de equipos críticos.","priority":"ALTA"}],"estado general de los edificios":[{"text":"El acceso de vehículos del estacionamiento cubierto presenta un cerramiento de Durlock impactado, dejando expuesta la cañería del sistema de detección de incendios. Se recomienda elevar la traza de la cañería del sistema de detección a una altura segura, a fin de evitar interferencias.","priority":"MEDIA"}]};
+
+// ─── CHECKLIST STRUCTURE ─────────────────────────────────────────────────────
+const SCHEMA = {
+  inc:{letter:'I',cats:[
+    {n:"RIESGOS EXTERNOS",g:1,items:[{n:1,l:"Linderos"},{n:2,l:"Vandalismo"},{n:3,l:"Vigilancia"}]},
+    {n:"CARACTERÍSTICAS CONSTRUCTIVAS",g:2,items:[{n:4,l:"Combustibilidad de Construcciones"},{n:5,l:"Estado General de los Edificios"},{n:6,l:"Resistencia al Fuego de Estructuras"},{n:7,l:"Separaciones (Áreas de Fuego)"},{n:8,l:"Daños por Humo"}]},
+    {n:"PROGRAMAS GERENCIALES",g:3,items:[{n:9,l:"Permisos de Trabajos en Caliente"},{n:10,l:"Autoinspecciones"},{n:11,l:"Orden y Limpieza"},{n:12,l:"Planes de Emergencia"},{n:13,l:"Prohibición de Fumar"}]},
+    {n:"RIESGOS DE PROCESOS",g:5,items:[{n:14,l:"Instalación Eléctrica"},{n:15,l:"Riesgo de Explosión"},{n:16,l:"Almacenamiento y Manejo de Inflamables"},{n:17,l:"Almacenamiento al Aire Libre"},{n:18,l:"Almacenamientos Interiores"},{n:19,l:"Cargadores Autos Eléctricos / Autoelevadores"},{n:20,l:"Salas de Control / Sala de Servidores"},{n:21,l:"Servicios Auxiliares (Generadores, Transformadores, etc.)"},{n:22,l:"Sala de Servidores (IT)"}]},
+    {n:"PROTECCIONES CONTRA INCENDIO",g:4,items:[{n:23,l:"Entrenamiento de Empleados para Emergencias"},{n:24,l:"Extintores"},{n:25,l:"Bomberos Públicos (Distancia / Tiempo)"},{n:26,l:"Red de Incendio"},{n:27,l:"Sistema de Detección de Humo"},{n:28,l:"Sistemas Fijos de Extinción (FM200, NOVEC, CO2)"},{n:29,l:"Rociadores Automáticos"},{n:30,l:"Mantenimiento de Sistemas de Incendio"}]}
+  ]},
+  seg:{letter:'S',cats:[
+    {n:"EXPOSICIÓN Y ATRACTIVO",g:1,items:[{n:1,l:"Riesgos del Entorno"},{n:2,l:"Riesgos Específicos de la Instalación"},{n:3,l:"Tipo de Ocupación"}]},
+    {n:"EXPOSICIÓN DE ACTIVOS",g:2,items:[{n:4,l:"Mercadería / Stock"},{n:5,l:"Sala de TI"},{n:6,l:"Equipos y Contenido"},{n:7,l:"Almacenamiento Exterior"}]},
+    {n:"PROTECCIÓN FÍSICA",g:3,items:[{n:8,l:"Perímetro Exterior"},{n:9,l:"Construcción del Edificio"},{n:10,l:"Protección de Aberturas"}]},
+    {n:"GESTIÓN DE LA SEGURIDAD",g:4,items:[{n:11,l:"Gestión de Seguridad"},{n:12,l:"Control de Llaves y Códigos"},{n:13,l:"Control de Accesos"},{n:14,l:"Selección y Capacitación del Personal"},{n:15,l:"Sistemas de Inventario"}]},
+    {n:"DETECCIÓN Y RESPUESTA",g:5,items:[{n:16,l:"Sistemas de Detección y Alarma"},{n:17,l:"Vigilancia y Monitoreo"},{n:18,l:"Respuesta ante Emergencias"},{n:19,l:"Historial de Incidentes"}]}
+  ]}
+};
+
+// item position lookup
+const POS = {};
+Object.keys(SCHEMA).forEach(sk=>{
+  SCHEMA[sk].cats.forEach(cat=>{
+    cat.items.forEach((item,idx)=>{
+      POS[sk+'_'+item.n]={g:cat.g,p:idx+1};
+    });
+  });
+});
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const META = {nombre:'',tipo:'',fecha:'',id:'',cod:'',ubicacion:''};
+const ST = {inc:{},seg:{}};
+
+function gs(sk,key){
+  if(!ST[sk][key]) ST[sk][key]={rating:'',obs:'',recs:[],photos:[]};
+  return ST[sk][key];
+}
+function rbKey(label){ return label.toLowerCase().trim(); }
+function getRBRecs(label){
+  const k=rbKey(label);
+  return RB[k]||[];
+}
+
+// ─── BUILD ──────────────────────────────────────────────────────────────────
+function build(sk){
+  const panel=document.getElementById('tab-'+sk);
+  // META (only once, share)
+  if(sk==='inc'){
+    panel.insertAdjacentHTML('beforeend',`
+      <div class="meta">
+        <div class="grid2">
+          <div class="fld"><label>Nombre del auditor</label><input type="text" placeholder="Nombre" oninput="META.nombre=this.value"></div>
+          <div class="fld"><label>Fecha</label><input type="date" oninput="META.fecha=this.value"></div>
+          <div class="fld"><label>ID</label><input type="text" placeholder="ID" oninput="META.id=this.value"></div>
+          <div class="fld"><label>Código</label><input type="text" placeholder="Cód" oninput="META.cod=this.value"></div>
+        </div>
+        <div class="grid1">
+          <div class="fld"><label>Ubicación / Nombre del sitio</label><input type="text" placeholder="Ej: 147 Morón, 602 Protecciones…" oninput="META.ubicacion=this.value"></div>
+          <div class="fld"><label>Tipo de instalación</label><input type="text" placeholder="Tipo" oninput="META.tipo=this.value"></div>
+        </div>
+      </div>`);
+  }
+  SCHEMA[sk].cats.forEach(cat=>{
+    const ch=document.createElement('div');
+    ch.className='cat-hdr';
+    ch.innerHTML=`<span class="cat-lbl">${cat.n}</span><div class="cat-line"></div>`;
+    panel.appendChild(ch);
+    cat.items.forEach(item=>{
+      const key=sk+'_'+item.n;
+      // CARD
+      const card=document.createElement('div');
+      card.className='card'; card.id='card-'+key;
+      card.innerHTML=`
+        <div class="card-top"><span class="num">${item.n}</span><span class="lbl">${item.l}</span></div>
+        <div class="rrow">
+          <button class="rbtn" data-v="M"  data-k="${key}" data-sk="${sk}" onclick="rate(this)">M<br><small>Malo</small></button>
+          <button class="rbtn" data-v="R"  data-k="${key}" data-sk="${sk}" onclick="rate(this)">R<br><small>Regular</small></button>
+          <button class="rbtn" data-v="B"  data-k="${key}" data-sk="${sk}" onclick="rate(this)">B<br><small>Bueno</small></button>
+          <button class="rbtn" data-v="MB" data-k="${key}" data-sk="${sk}" onclick="rate(this)">MB<br><small>Muy Bueno</small></button>
+          <button class="rbtn" data-v="NA" data-k="${key}" data-sk="${sk}" onclick="rate(this)">N/A</button>
+        </div>
+        <div class="obs-sec">
+          <button class="obs-tog" onclick="togObs('${key}')">+ Observaciones</button>
+          <div class="obs-body" id="obs-body-${key}">
+            <textarea class="obs" placeholder="Observaciones de campo…" oninput="gs('${sk}','${key}').obs=this.value"></textarea>
+          </div>
+        </div>`;
+      panel.appendChild(card);
+      // REC PANEL
+      const rp=document.createElement('div');
+      rp.className='rpanel'; rp.id='rp-'+key;
+      const histRecs=getRBRecs(item.l);
+      rp.innerHTML=`
+        <div class="rp-hdr">
+          <div class="rp-ttl">Recomendaciones</div>
+          <button class="ai-btn" id="ai-${key}" onclick="genAI('${key}','${sk}','${item.l.replace(/'/g,"\\'")}')">✦ IA</button>
+        </div>
+        ${histRecs.length?`
+        <div class="picker-wrap">
+          <div class="picker-lbl">📋 Seleccionar del historial (${histRecs.length} disponibles)</div>
+          <div class="picker-list" id="picker-${key}">
+            ${histRecs.map((r,i)=>`
+              <div class="picker-item" id="pi-${key}-${i}" onclick="pickRec('${key}','${sk}',${i})" title="Clic para agregar">
+                <div class="pi-prio ${r.priority.toLowerCase()}">${r.priority==='ALTA'?'🔴':r.priority==='MEDIA'?'🟠':'🟢'} ${r.priority}</div>
+                <div class="pi-text">${r.text.substring(0,130)}…</div>
+              </div>`).join('')}
+          </div>
+        </div>`:''}
+        <div class="recs-list" id="rl-${key}"></div>
+        <button class="add-btn" onclick="addRec('${key}','${sk}')">+ Nueva recomendación en blanco</button>
+        <div class="photo-sec">
+          <span class="sec-lbl">📸 Fotos de campo</span>
+          <div class="photo-grid" id="pg-${key}"></div>
+          <label class="ph-btn" for="ph-${key}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            Tomar / subir foto
+          </label>
+          <input type="file" accept="image/*" capture="environment" class="ph-in" id="ph-${key}" multiple onchange="handlePhoto('${key}','${sk}',this)">
+        </div>`;
+      panel.appendChild(rp);
+    });
+  });
+  panel.insertAdjacentHTML('beforeend','<div class="spacer"></div>');
+}
+
+// ─── RATING ──────────────────────────────────────────────────────────────────
+function rate(btn){
+  const key=btn.dataset.k, v=btn.dataset.v, sk=btn.dataset.sk;
+  const st=gs(sk,key);
+  if(st.rating===v){
+    st.rating='';
+    btn.closest('.rrow').querySelectorAll('.rbtn').forEach(b=>b.classList.remove('on'));
+    document.getElementById('card-'+key).className='card';
+    document.getElementById('rp-'+key).classList.remove('open');
+    upProg(); return;
+  }
+  st.rating=v;
+  btn.closest('.rrow').querySelectorAll('.rbtn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const cm={M:'rm',R:'rr',B:'rb',MB:'rmb',NA:''};
+  document.getElementById('card-'+key).className='card '+(cm[v]||'');
+  document.getElementById('rp-'+key).classList.toggle('open',v==='R'||v==='M');
+  upProg();
+}
+
+function togObs(key){
+  const b=document.getElementById('obs-body-'+key);
+  const tog=b.previousElementSibling;
+  const o=b.classList.toggle('open');
+  tog.textContent=(o?'− ':'+ ')+'Observaciones';
+}
+
+// ─── RECS ────────────────────────────────────────────────────────────────────
+function pickRec(key,sk,idx){
+  const histRecs=getRBRecs(key.split('_').slice(1).join('_'));
+  // Re-lookup by item label
+  const sk2=key.split('_')[0];
+  // find item label
+  let itemLabel='';
+  SCHEMA[sk2].cats.forEach(cat=>cat.items.forEach(it=>{if(sk2+'_'+it.n===key) itemLabel=it.l;}));
+  const allRecs=getRBRecs(itemLabel);
+  if(!allRecs[idx]) return;
+  const rec=allRecs[idx];
+  const st=gs(sk,key);
+  // check not already added
+  const already=st.recs.some(r=>r.text===rec.text);
+  if(already){ alert('Esta recomendación ya fue agregada.'); return; }
+  const recIdx=st.recs.length;
+  st.recs.push({text:rec.text,priority:rec.priority});
+  renderRec(key,sk,recIdx);
+  // mark picker item as used
+  const pi=document.getElementById(`pi-${key}-${idx}`);
+  if(pi) pi.classList.add('used');
+}
+
+function addRec(key,sk,text,priority){
+  const st=gs(sk,key);
+  const idx=st.recs.length;
+  st.recs.push({text:text||'',priority:priority||''});
+  renderRec(key,sk,idx);
+}
+
+function renderRec(key,sk,idx){
+  const st=gs(sk,key);
+  const r=st.recs[idx];
+  const rl=document.getElementById('rl-'+key);
+  if(!rl) return;
+  const div=document.createElement('div');
+  div.className='rec-item'; div.id=`ri-${key}-${idx}`;
+  div.innerHTML=`
+    <div class="ri-hdr">
+      <span class="ri-num">REC ${idx+1}</span>
+      <button class="ri-del" onclick="delRec('${key}','${sk}',${idx})">×</button>
+    </div>
+    <textarea placeholder="Texto de la recomendación…" oninput="gs('${sk}','${key}').recs[${idx}].text=this.value">${r.text||''}</textarea>
+    <div class="prio-row">
+      <button class="pb ${r.priority==='ALTA'?'a':''}" data-p="ALTA" onclick="setPrio(this,'${key}','${sk}',${idx})">🔴 Alta</button>
+      <button class="pb ${r.priority==='MEDIA'?'m':''}" data-p="MEDIA" onclick="setPrio(this,'${key}','${sk}',${idx})">🟠 Media</button>
+      <button class="pb ${r.priority==='BAJA'?'b':''}" data-p="BAJA" onclick="setPrio(this,'${key}','${sk}',${idx})">🟢 Baja</button>
+    </div>`;
+  rl.appendChild(div);
+}
+
+function setPrio(btn,key,sk,idx){
+  gs(sk,key).recs[idx].priority=btn.dataset.p;
+  const pm={'ALTA':'a','MEDIA':'m','BAJA':'b'};
+  btn.closest('.prio-row').querySelectorAll('.pb').forEach(b=>{b.className='pb';});
+  btn.className='pb '+pm[btn.dataset.p];
+}
+
+function delRec(key,sk,idx){
+  const st=gs(sk,key);
+  st.recs.splice(idx,1);
+  const rl=document.getElementById('rl-'+key);
+  rl.innerHTML='';
+  const saved=[...st.recs];
+  st.recs=[];
+  saved.forEach((_,i)=>{ st.recs.push(saved[i]); renderRec(key,sk,i); });
+  // reset picker used marks
+  const allRecs=getItemRecs(key,sk);
+  allRecs.forEach((_,pi_idx)=>{
+    const pi=document.getElementById(`pi-${key}-${pi_idx}`);
+    if(pi) pi.classList.remove('used');
+  });
+  // re-mark used
+  st.recs.forEach(r=>{
+    allRecs.forEach((ar,pi_idx)=>{
+      if(ar.text===r.text){ const pi=document.getElementById(`pi-${key}-${pi_idx}`); if(pi) pi.classList.add('used'); }
+    });
+  });
+}
+
+function getItemRecs(key,sk){
+  let lbl='';
+  SCHEMA[sk].cats.forEach(cat=>cat.items.forEach(it=>{if(sk+'_'+it.n===key) lbl=it.l;}));
+  return getRBRecs(lbl);
+}
+
+// ─── AI ──────────────────────────────────────────────────────────────────────
+async function genAI(key,sk,label){
+  const btn=document.getElementById('ai-'+key);
+  btn.disabled=true; btn.classList.add('ld'); btn.textContent=' Generando...';
+  const st=gs(sk,key);
+  const rating=st.rating==='M'?'Malo':'Regular';
+  const obs=st.obs||'';
+  const histRecs=getRBRecs(label);
+  const base=histRecs.length?histRecs[0].text:'';
+  const prompt=`Sos un auditor de riesgos experto. Para el ítem "${label}" del checklist de "${sk==='inc'?'Seguridad contra Incendio':'Seguridad Física'}", calificado como "${rating}"${obs?`, con observación: "${obs}"`:''}.\n${base?`Base histórica: "${base.substring(0,200)}"\nAdaptala al contexto específico.`:'Generá una recomendación técnica práctica.'}\nGenerá UNA recomendación concisa (máx 4 oraciones): descripción del problema, riesgo y acción correctiva. Solo el texto, sin título ni prefijo.`;
+  try{
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+    const d=await r.json();
+    const text=d.content?.[0]?.text?.trim()||'';
+    if(text){ addRec(key,sk,text,'MEDIA'); }
+  }catch(e){console.error(e);}
+  btn.disabled=false; btn.classList.remove('ld'); btn.textContent='✦ IA';
+}
+
+// ─── PHOTOS ──────────────────────────────────────────────────────────────────
+function handlePhoto(key,sk,input){
+  if(!input.files.length) return;
+  Array.from(input.files).forEach(file=>{
+    const fr=new FileReader();
+    fr.onload=e=>{
+      gs(sk,key).photos.push(e.target.result);
+      renderPhotos(key,sk);
+    };
+    fr.readAsDataURL(file);
+  });
+  input.value='';
+}
+
+function renderPhotos(key,sk){
+  const grid=document.getElementById('pg-'+key);
+  if(!grid) return;
+  const st=gs(sk,key);
+  grid.innerHTML='';
+  st.photos.forEach((src,i)=>{
+    const d=document.createElement('div');
+    d.className='ph-thumb';
+    d.innerHTML=`<img src="${src}"><button class="ph-del" onclick="delPhoto('${key}','${sk}',${i})">×</button>`;
+    grid.appendChild(d);
+  });
+}
+
+function delPhoto(key,sk,i){
+  gs(sk,key).photos.splice(i,1);
+  renderPhotos(key,sk);
+}
+
+// ─── PROGRESS ───────────────────────────────────────────────────────────────
+function countAll(sk){ return SCHEMA[sk].cats.reduce((a,c)=>a+c.items.length,0); }
+function upProg(){
+  const total=countAll('inc')+countAll('seg');
+  const done=[...Object.values(ST.inc),...Object.values(ST.seg)].filter(s=>s.rating).length;
+  document.getElementById('doneN').textContent=done;
+  document.getElementById('totalN').textContent=total;
+}
+
+// ─── TABS ────────────────────────────────────────────────────────────────────
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('on',['inc','seg','sum'][i]===name));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('on'));
+  document.getElementById('tab-'+name).classList.add('on');
+  if(name==='sum') buildSum();
+}
+
+// ─── SUMMARY ─────────────────────────────────────────────────────────────────
+function buildSum(){
+  const div=document.getElementById('tab-sum');
+  div.innerHTML='<div class="sum-wrap"></div>';
+  const w=div.querySelector('.sum-wrap');
+  ['inc','seg'].forEach(sk=>{
+    const allItems=SCHEMA[sk].cats.flatMap(c=>c.items);
+    const C={M:0,R:0,B:0,MB:0};
+    const unr=[];
+    allItems.forEach(it=>{
+      const key=sk+'_'+it.n;
+      const r=ST[sk][key]?.rating||'';
+      if(r&&r!=='NA') C[r]=(C[r]||0)+1;
+      else if(!r) unr.push(it);
+    });
+    const lbl=sk==='inc'?'🔥 Incendio':'🔒 Seguridad Física';
+    const card=document.createElement('div');
+    card.className='sum-card';
+    card.innerHTML=`<h3>${lbl}</h3>
+      <div class="sgrid">
+        <div class="sbox m"><div class="sv">${C.M}</div><div class="sl">Malo</div></div>
+        <div class="sbox r"><div class="sv">${C.R}</div><div class="sl">Regular</div></div>
+        <div class="sbox b"><div class="sv">${C.B}</div><div class="sl">Bueno</div></div>
+        <div class="sbox mb"><div class="sv">${C.MB}</div><div class="sl">Muy Bueno</div></div>
+      </div>
+      ${unr.length?`<div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Sin calificar: ${unr.length}</div>`:'<div style="font-size:12px;color:var(--bueno)">✓ Todos calificados</div>'}`;
+    w.appendChild(card);
+  });
+  const eb=document.createElement('div');
+  eb.className='exp-bar';
+  eb.innerHTML=`
+    <button class="exp-btn" onclick="doExport()">⬇ Vista previa / Descarga local</button>
+    <button class="od-btn" id="od-btn" onclick="exportToOneDrive()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.5 12.5c0-.17-.01-.33-.03-.5H19.5c1.93 0 3.5-1.57 3.5-3.5 0-1.8-1.36-3.27-3.12-3.47A5.5 5.5 0 0 0 14.5 2a5.49 5.49 0 0 0-5.22 3.77A4 4 0 0 0 5 9.5c0 .17.01.33.03.5H5a4.5 4.5 0 0 0 0 9h14a3.5 3.5 0 0 0 .5-6.97z"/></svg>
+      Guardar en OneDrive
+    </button>
+    <div class="od-status" id="od-status"></div>
+    <div class="od-user" id="od-user"></div>`;
+  w.appendChild(eb);
+}
+
+// ─── MODAL ───────────────────────────────────────────────────────────────────
+let _modalCb=null;
+function openModal(title,items,cb){
+  _modalCb=cb;
+  document.getElementById('modal-ttl').textContent=title;
+  const body=document.getElementById('modal-body');
+  body.innerHTML='';
+  items.forEach((r,i)=>{
+    const d=document.createElement('div');
+    d.className='modal-item';
+    const pc={ALTA:'a',MEDIA:'m',BAJA:'b'}[r.priority]||'';
+    d.innerHTML=`<div class="mp ${pc}">${r.priority==='ALTA'?'🔴':r.priority==='MEDIA'?'🟠':'🟢'} ${r.priority}</div><div class="mt">${r.text}</div>`;
+    d.onclick=()=>{ cb(r); closeModalDirect(); };
+    body.appendChild(d);
+  });
+  document.getElementById('modal-bg').classList.add('open');
+}
+function closeModal(e){ if(e.target===document.getElementById('modal-bg')) closeModalDirect(); }
+function closeModalDirect(){ document.getElementById('modal-bg').classList.remove('open'); }
+
+// ─── MSAL + ONEDRIVE ─────────────────────────────────────────────────────────
+const MSAL_CONFIG = {
+  auth: {
+    clientId: 'd9e0f052-f962-4add-9ba2-fc1f651e05b3',
+    authority: 'https://login.microsoftonline.com/common',
+    redirectUri: window.location.href.split('?')[0].split('#')[0]
+  },
+  cache: { cacheLocation: 'sessionStorage' }
+};
+
+const msalInstance = new msal.PublicClientApplication(MSAL_CONFIG);
+const OD_SCOPES = ['Files.ReadWrite', 'User.Read'];
+let odAccount = null;
+
+// Handle redirect after login
+msalInstance.initialize().then(() => {
+  msalInstance.handleRedirectPromise().then(resp => {
+    if (resp && resp.account) {
+      odAccount = resp.account;
+      showOdUser(resp.account.username);
+      // If we were trying to export, continue
+      if (sessionStorage.getItem('od_pending')) {
+        sessionStorage.removeItem('od_pending');
+        exportToOneDrive();
+      }
+    }
+  }).catch(e => console.error(e));
+});
+
+function showOdUser(email) {
+  const el = document.getElementById('od-user');
+  if (el) { el.textContent = '✓ Conectado como ' + email; el.style.display = 'block'; }
+}
+
+function setOdStatus(msg, type) {
+  const el = document.getElementById('od-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'od-status ' + type;
+}
+
+async function getOdToken() {
+  const accounts = msalInstance.getAllAccounts();
+  if (accounts.length > 0) odAccount = accounts[0];
+  if (odAccount) {
+    try {
+      const r = await msalInstance.acquireTokenSilent({ scopes: OD_SCOPES, account: odAccount });
+      showOdUser(odAccount.username);
+      return r.accessToken;
+    } catch(e) { /* fall through to interactive */ }
+  }
+  // Need interactive login
+  return null;
+}
+
+async function exportToOneDrive() {
+  const btn = document.getElementById('od-btn');
+  if (btn) { btn.disabled = true; }
+  setOdStatus('Conectando con Microsoft…', 'ld');
+
+  let token = await getOdToken();
+
+  if (!token) {
+    setOdStatus('Redirigiendo a Microsoft para iniciar sesión…', 'ld');
+    sessionStorage.setItem('od_pending', '1');
+    try {
+      await msalInstance.loginRedirect({ scopes: OD_SCOPES });
+    } catch(e) {
+      setOdStatus('Error al iniciar sesión: ' + e.message, 'err');
+      if (btn) btn.disabled = false;
+    }
+    return;
+  }
+
+  setOdStatus('Generando archivo…', 'ld');
+  const html = buildExcelHTML();
+  const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+
+  const ubicacion = META.ubicacion || META.id || 'Sitio';
+  const fecha = META.fecha || new Date().toISOString().slice(0, 10);
+  const safe = ubicacion.replace(/[^a-zA-Z0-9_\-áéíóúñÁÉÍÓÚÑ ]/g, '').trim() || 'sitio';
+  const fileName = `auditoria_${safe}_${fecha}.xls`;
+  const folderPath = 'Auditorías de Riesgo';
+
+  setOdStatus('Subiendo a OneDrive…', 'ld');
+
+  try {
+    // 1. Create folder if it doesn't exist
+    await fetch(`https://graph.microsoft.com/v1.0/me/drive/root:/${folderPath}`, {
+      method: 'GET',
+      headers: { Authorization: 'Bearer ' + token }
+    }).catch(() => {});
+
+    await fetch(`https://graph.microsoft.com/v1.0/me/drive/root/children`, {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: folderPath,
+        folder: {},
+        '@microsoft.graph.conflictBehavior': 'fail'
+      })
+    }).catch(() => {}); // ignore if already exists
+
+    // 2. Upload file
+    const uploadResp = await fetch(
+      `https://graph.microsoft.com/v1.0/me/drive/root:/${folderPath}/${fileName}:/content`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: 'Bearer ' + token,
+          'Content-Type': 'application/vnd.ms-excel'
+        },
+        body: blob
+      }
+    );
+
+    if (uploadResp.ok) {
+      const fileData = await uploadResp.json();
+      setOdStatus(`✓ Guardado en OneDrive → ${folderPath}/${fileName}`, 'ok');
+    } else {
+      const err = await uploadResp.text();
+      setOdStatus('Error al subir: ' + uploadResp.status, 'err');
+      console.error(err);
+    }
+  } catch(e) {
+    setOdStatus('Error de red: ' + e.message, 'err');
+  }
+
+  if (btn) btn.disabled = false;
+}
+
+// ─── EXCEL EXPORT ─────────────────────────────────────────────────────────────
+function buildExcelHTML() {
+  const rl2t={M:'Malo',R:'Regular',B:'Bueno',MB:'Muy Bueno',NA:'N/A','':''};
+  const ubicacion=META.ubicacion||META.id||'Sitio';
+  const TEAL='#05AEB2'; const WHITE='#FFFFFF'; const GRAY='#848584';
+  const styles={
+    'Muy Bueno':{color:'#1F497D',bg:'#D8E4F8'},
+    'Bueno':{color:'#006100',bg:'#C6EFCE'},
+    'Regular':{color:'#9C5700',bg:'#FFEB9C'},
+    'Malo':{color:'#B00000',bg:'#FBCBCB'},
+    'N/A':{color:'#595959',bg:'#D9D9D9'},
+    'ALTA':{color:'#B00000',bg:'#FBCBCB'},
+    'MEDIA':{color:'#9C5700',bg:'#FFEB9C'},
+    'BAJA':{color:'#006100',bg:'#C6EFCE'},
+  };
+  function ratingCell(v){const s=styles[v]||{};return `<td style="text-align:center;background:${s.bg||''};color:${s.color||''};font-weight:bold;padding:6px 8px;border:1px solid #ccc;">${v}</td>`;}
+  function tealCell(txt,colspan=1){return `<td colspan="${colspan}" style="background:${TEAL};color:${WHITE};padding:6px 10px;font-weight:bold;border:1px solid #999;">${txt}</td>`;}
+  function grayCell(txt,colspan=1){return `<td colspan="${colspan}" style="background:${GRAY};color:${WHITE};padding:6px 10px;border:1px solid #999;">${txt}</td>`;}
+
+  let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
+<x:Name>${ubicacion.substring(0,30)}</x:Name>
+<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+</head><body>
+<table border="1" cellspacing="0" style="font-family:Calibri,Arial;font-size:12px;border-collapse:collapse;">`;
+
+  html+=`<tr><td colspan="3" style="background:${TEAL};color:${WHITE};font-size:16px;font-weight:bold;padding:8px;border:1px solid #999;">${ubicacion}</td><td></td><td></td><td></td><td></td><td></td></tr>`;
+  html+=`<tr><td></td></tr>`;
+
+  function writeSection(sk,sectionLabel){
+    html+=`<tr>`;
+    html+=tealCell(sectionLabel,2);
+    html+=`<td></td><td></td>`;
+    html+=tealCell('Actual');
+    html+=`<td></td>`;
+    html+=tealCell('Rec Cumplida');
+    html+=`<td></td>`;
+    html+=tealCell('Rec N°');
+    html+=`</tr><tr><td></td></tr>`;
+
+    SCHEMA[sk].cats.forEach(cat=>{
+      const items=cat.items;
+      html+=`<tr>`;
+      html+=`<td rowspan="${items.length}" style="background:${TEAL};color:${WHITE};font-weight:bold;padding:6px 8px;border:1px solid #999;vertical-align:middle;text-align:center;">${cat.n}</td>`;
+      const it0=items[0];
+      const key0=sk+'_'+it0.n;
+      const st0=gs(sk,key0);
+      const rl0=rl2t[st0.rating||''];
+      const pos0=POS[key0];
+      const validRecs0=(st0.recs||[]).filter(r=>r.text&&r.text.trim());
+      const recId0=validRecs0.length?`${ubicacion}-${SCHEMA[sk].letter}-${pos0.g}-${pos0.p}`:'';
+      html+=grayCell(it0.l,2);
+      html+=`<td></td>`;
+      html+=ratingCell(rl0);
+      html+=`<td></td>`;
+      html+=ratingCell(rl0);
+      html+=`<td></td>`;
+      html+=`<td style="text-align:center;padding:4px;border:1px solid #ccc;">${recId0}</td>`;
+      html+=`</tr>`;
+      items.slice(1).forEach(it=>{
+        const key=sk+'_'+it.n;
+        const st=gs(sk,key);
+        const rl=rl2t[st.rating||''];
+        const pos=POS[key];
+        const vr=(st.recs||[]).filter(r=>r.text&&r.text.trim());
+        const recId=vr.length?`${ubicacion}-${SCHEMA[sk].letter}-${pos.g}-${pos.p}`:'';
+        html+=`<tr>`;
+        html+=grayCell(it.l,2);
+        html+=`<td></td>`;
+        html+=ratingCell(rl);
+        html+=`<td></td>`;
+        html+=ratingCell(rl);
+        html+=`<td></td>`;
+        html+=`<td style="text-align:center;padding:4px;border:1px solid #ccc;">${recId}</td>`;
+        html+=`</tr>`;
+      });
+      html+=`<tr><td></td></tr>`;
+    });
+
+    html+=`<tr><td colspan="8" style="background:${TEAL};color:${WHITE};font-weight:bold;font-size:14px;padding:8px;border:1px solid #999;">Recomendaciones</td></tr>`;
+    html+=`<tr><td></td></tr>`;
+
+    SCHEMA[sk].cats.forEach(cat=>{
+      cat.items.forEach(it=>{
+        const key=sk+'_'+it.n;
+        const st=gs(sk,key);
+        const pos=POS[key];
+        const letter=SCHEMA[sk].letter;
+        const vr=(st.recs||[]).filter(r=>r.text&&r.text.trim());
+        vr.forEach((rec,ri)=>{
+          const rid=`${ubicacion}-${letter}-${pos.g}-${pos.p}${vr.length>1?(ri+1):''}`;
+          const ps=styles[rec.priority]||{};
+          html+=`<tr>`;
+          html+=tealCell('Rec N°');
+          html+=`<td style="text-align:center;font-weight:bold;padding:6px;border:1px solid #ccc;">${rid}</td>`;
+          html+=`<td colspan="4" style="background:${TEAL};color:${WHITE};font-weight:bold;padding:6px;border:1px solid #999;">${it.l}</td>`;
+          html+=`<td></td>`;
+          html+=tealCell('Prioridad');
+          html+=`</tr>`;
+          html+=`<tr>`;
+          html+=tealCell('Descripción');
+          html+=`<td colspan="5" rowspan="3" style="padding:8px;vertical-align:top;border:1px solid #ccc;white-space:pre-wrap;max-width:400px;">${rec.text}</td>`;
+          html+=`<td></td>`;
+          html+=`<td style="background:${ps.bg||''};color:${ps.color||''};font-weight:bold;text-align:center;padding:6px;border:1px solid #ccc;">${rec.priority||''}</td>`;
+          html+=`</tr>`;
+          html+=`<tr><td></td><td style="background:${TEAL};color:${WHITE};font-weight:bold;text-align:center;padding:6px;border:1px solid #999;">Costo de Implementación</td></tr>`;
+          html+=`<tr><td></td><td style="border:1px solid #ccc;"></td></tr>`;
+          html+=`<tr><td></td></tr>`;
+        });
+      });
+    });
+    html+=`<tr><td></td></tr>`;
+  }
+
+  writeSection('inc','Incendio');
+  writeSection('seg','Seguridad Física');
+  html+=`</table></body></html>`;
+  return html;
+}
+
+function doExport(){
+  const html = buildExcelHTML();
+  const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  const fecha=META.fecha||new Date().toISOString().slice(0,10);
+  const ubicacion=META.ubicacion||META.id||'Sitio';
+  const safe=ubicacion.replace(/[^a-zA-Z0-9_\-áéíóúñÁÉÍÓÚÑ ]/g,'').trim()||'sitio';
+  a.download=`auditoria_${safe}_${fecha}.xls`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+build('inc');
+build('seg');
+upProg();
+</script>
+</body>
+</html>
