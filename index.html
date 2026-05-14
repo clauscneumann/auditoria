@@ -707,106 +707,178 @@ async function exportToOneDrive() {
   if (btn) btn.disabled = false;
 }
 
-// ─── EXCEL EXPORT (real .xlsx) ───────────────────────────────────────────────
+// ─── EXCEL EXPORT - formato exacto del template ──────────────────────────────
 function buildXLSX() {
   const wb = XLSX.utils.book_new();
-  const rl2t={M:'Malo',R:'Regular',B:'Bueno',MB:'Muy Bueno',NA:'N/A','':''};
+  const rl2t = {M:'Malo',R:'Regular',B:'Bueno',MB:'Muy Bueno',NA:'N/A','':''};
   const ubicacion = META.ubicacion||META.id||'Sitio';
 
-  // Colors
-  const TEAL = '05AEB2'; const WHITE = 'FFFFFFFF'; const GRAY = '848584';
-  const RATING_STYLES = {
-    'Malo':     {fgColor:{rgb:'FFFBCBCB'}, fontColor:'FFB00000'},
-    'Regular':  {fgColor:{rgb:'FFFFFFEB9C'}, fontColor:'FF9C5700'},
-    'Bueno':    {fgColor:{rgb:'FFC6EFCE'}, fontColor:'FF006100'},
-    'Muy Bueno':{fgColor:{rgb:'FFD8E4F8'}, fontColor:'FF1F497D'},
-    'N/A':      {fgColor:{rgb:'FFD9D9D9'}, fontColor:'FF595959'},
-    'ALTA':     {fgColor:{rgb:'FFFBCBCB'}, fontColor:'FFB00000'},
-    'MEDIA':    {fgColor:{rgb:'FFFFFFEB9C'}, fontColor:'FF9C5700'},
-    'BAJA':     {fgColor:{rgb:'FFC6EFCE'}, fontColor:'FF006100'},
+  // Theme colors resolved from the template
+  const TEAL     = 'FF05AEB2';
+  const WHITE    = 'FFFFFFFF';
+  const GRAY_ITM = 'FF848584'; // item background
+  const GRAY_DES = 'FFAEAFAC'; // Descripción cell
+  const BLACK    = 'FF000000';
+  const TRANS    = '00000000';
+
+  // Rating styles (exact from template)
+  const RS = {
+    'Malo':      {bg:'FFFBCBCB', fc:'FFB00000'},
+    'Regular':   {bg:'FFFFFFEB9C', fc:'FF9C5700'},
+    'Bueno':     {bg:'FFC6EFCE',  fc:'FF006100'},  // theme:6/9 resolved
+    'Muy Bueno': {bg:'FFDCE6F1',  fc:'FF1F497D'},  // theme:7/3 resolved
+    'N/A':       {bg:TRANS,       fc:'FF000000'},
+    '':          {bg:TRANS,       fc:'FF000000'},
+    'ALTA':      {bg:'FFFFC7CE',  fc:'FF9C0006'},
+    'MEDIA':     {bg:'FFFFFFEB9C',fc:'FF9C5700'},
+    'BAJA':      {bg:'FFC6EFCE',  fc:'FF006100'},
+    'BAJO':      {bg:'FFC6EFCE',  fc:'FF006100'},
+    'MEDIO':     {bg:'FFFFFFEB9C',fc:'FF9C5700'},
   };
 
-  function cellStyle(bgRgb, fontRgb, bold, wrap, halign) {
+  function cs(bg, fc, halign, wrap) {
     return {
-      fill: {patternType:'solid', fgColor:{rgb: bgRgb}},
-      font: {name:'Calibri', sz:11, color:{rgb: fontRgb||'FF000000'}, bold:!!bold},
-      alignment: {horizontal: halign||'left', vertical:'center', wrapText:!!wrap},
+      fill: {patternType:'solid', fgColor:{rgb:bg||TRANS}},
+      font: {name:'Calibri', sz:11, color:{rgb:fc||BLACK}},
+      alignment: {horizontal:halign||'left', vertical:'center', wrapText:!!wrap},
       border: {
-        top:{style:'thin',color:{rgb:'FF999999'}},
-        bottom:{style:'thin',color:{rgb:'FF999999'}},
-        left:{style:'thin',color:{rgb:'FF999999'}},
-        right:{style:'thin',color:{rgb:'FF999999'}}
+        top:{style:'thin',color:{rgb:'FFC0C0C0'}},
+        bottom:{style:'thin',color:{rgb:'FFC0C0C0'}},
+        left:{style:'thin',color:{rgb:'FFC0C0C0'}},
+        right:{style:'thin',color:{rgb:'FFC0C0C0'}}
       }
     };
   }
 
-  const tealStyle = cellStyle('FF05AEB2','FFFFFFFF',true,true,'center');
-  const tealStyleL = cellStyle('FF05AEB2','FFFFFFFF',true,true,'left');
-  const grayStyle  = cellStyle('FF848584','FFFFFFFF',false,true,'left');
-  const plainStyle = cellStyle('FFFFFFFF','FF000000',false,true,'left');
-  const centerStyle= cellStyle('FFFFFFFF','FF000000',false,false,'center');
+  const S = {
+    tealC:  cs(TEAL, WHITE, 'center', true),
+    tealL:  cs(TEAL, WHITE, 'left',   true),
+    grayI:  cs(GRAY_ITM, WHITE, 'left', true),
+    grayD:  cs(GRAY_DES, WHITE, 'center', false),
+    plain:  cs(TRANS, 'FF424242', 'left', true),
+    plainC: cs(TRANS, 'FF424242', 'center', false),
+    hdrSite:cs(TRANS, 'FF000000', 'left', false),
+    hdrCol: cs(TEAL,  WHITE, 'center', false),
+  };
 
-  function ratingStyle(v) {
-    const s = RATING_STYLES[v];
-    if (!s) return plainStyle;
-    return cellStyle(s.fgColor.rgb, s.fontColor, true, false, 'center');
-  }
+  function rS(v) { const r=RS[v]||RS['']; return cs(r.bg, r.fc, 'center', false); }
 
+  // Build sheet cell by cell
   const aoa = [];
   const merges = [];
   const styles = {};
+  const rowH = {};
+  const colW = [
+    {wch:11.4}, // A=0
+    {wch:9.4},  // B=1
+    {wch:17.7}, // C=2
+    {wch:0.7},  // D=3
+    {wch:61.4}, // E=4
+    {wch:0.4},  // F=5
+    {wch:17.4}, // G=6
+    {wch:0.4},  // H=7
+    {wch:17.4}, // I=8
+    {wch:0.4},  // J=9
+    {wch:17.4}, // K=10
+    {wch:1.0},  // L=11
+    {wch:13.0}, // M=12
+    {wch:0.4},  // N=13
+    {wch:11.9}, // O=14
+    {wch:0.4},  // P=15
+    {wch:11.9}, // Q=16
+  ];
 
-  function setCell(r,c,v,style) {
+  function sc(r,c,v,style){
     while(aoa.length<=r) aoa.push([]);
     while(aoa[r].length<=c) aoa[r].push('');
     aoa[r][c]=v;
     if(style) styles[r+'_'+c]=style;
   }
-  function addMerge(r1,c1,r2,c2){ merges.push({s:{r:r1,c:c1},e:{r:r2,c:c2}}); }
+  function mg(r1,c1,r2,c2){ merges.push({s:{r:r1,c:c1},e:{r:r2,c:c2}}); }
+  function rh(r,h){ rowH[r]=h; }
 
-  let row=0;
+  let row = 0;
 
-  // Header
-  setCell(row,0,ubicacion,tealStyleL); addMerge(row,0,row,7); row++;
-  setCell(row,0,'Nombre:',plainStyle); setCell(row,1,META.nombre,plainStyle);
-  setCell(row,3,'Fecha:',plainStyle);  setCell(row,4,META.fecha,plainStyle);
-  row++;
-  setCell(row,0,'Tipo:',plainStyle);   setCell(row,1,META.tipo,plainStyle); row+=2;
+  // ── ROW 0: Site name in E (col 4)
+  sc(row, 4, ubicacion, S.hdrSite);
+  rh(row, 20); row++;
 
-  function writeSection(sk, label) {
-    setCell(row,0,label,tealStyle); addMerge(row,0,row,1);
-    setCell(row,3,'Actual',tealStyle);
-    setCell(row,5,'Rec Cumplida',tealStyle);
-    setCell(row,7,'Rec N°',tealStyle);
-    row++;
+  // ── ROW 1: blank
+  rh(row, 5); row++;
+
+  function writeChecklist(sk, sectionLabel) {
+    // Section header: B-C merged = section label, G=Actual, I=Rec Cumplida, K=Rec N°
+    sc(row,1,sectionLabel,S.tealC); mg(row,1,row,3);
+    sc(row,4,'',S.tealC);
+    sc(row,6,'Actual',S.hdrCol);
+    sc(row,8,'Rec Cumplida',S.hdrCol);
+    sc(row,10,'Rec N°',S.hdrCol);
+    rh(row,20); row++;
+
+    // blank spacer
+    rh(row,5); row++;
 
     SCHEMA[sk].cats.forEach(cat => {
       const items = cat.items;
-      const catStart = row;
-      items.forEach((it,iIdx) => {
+      const catStartRow = row;
+
+      items.forEach((it, iIdx) => {
         const key = sk+'_'+it.n;
-        const st = gs(sk,key);
+        const st = gs(sk, key);
         const rl = rl2t[st.rating||''];
         const pos = POS[key];
         const vr = (st.recs||[]).filter(r=>r.text&&r.text.trim());
         const recId = vr.length ? ubicacion+'-'+SCHEMA[sk].letter+'-'+pos.g+'-'+pos.p : '';
 
-        if(iIdx===0) {
-          setCell(row,0,cat.n,tealStyle);
+        // Category cell only on first item
+        if (iIdx === 0) {
+          sc(row,1,cat.n,S.tealC); sc(row,2,'',S.tealC); sc(row,3,'',S.tealC);
         }
-        setCell(row,1,it.l,grayStyle); addMerge(row,1,row,2);
-        setCell(row,3,rl,ratingStyle(rl));
-        setCell(row,5,rl,ratingStyle(rl));
-        setCell(row,7,recId,centerStyle);
-        row++;
+
+        // Item name in E (col4), spans E-F (4-5)
+        sc(row,4,it.l,S.grayI); sc(row,5,'',S.grayI);
+
+        // Actual (G=6)
+        sc(row,6,rl,rS(rl));
+
+        // Rec Cumplida (I=8) - same as actual if no rec, else Muy Bueno
+        const rcVal = vr.length ? 'Muy Bueno' : rl;
+        sc(row,8,rcVal,rS(rcVal));
+
+        // Rec N° (K=10)
+        if (recId) sc(row,10,recId,S.plainC);
+
+        // Hidden cols M=12 (groupNum) O=14 (posInGroup)
+        sc(row,12,pos.g,S.plainC);
+        sc(row,14,pos.p,S.plainC);
+
+        rh(row,19); row++;
       });
-      if(items.length>1) addMerge(catStart,0,catStart+items.length-1,0);
-      row++;
+
+      // Merge category cell vertically
+      if (items.length > 1) mg(catStartRow,1,catStartRow+items.length-1,3);
+
+      // Blank spacer between categories
+      rh(row,5); row++;
     });
+  }
 
-    // Recommendations
-    setCell(row,0,'Recomendaciones',tealStyle); addMerge(row,0,row,7); row+=2;
+  writeChecklist('inc','Incendio');
+  writeChecklist('seg','Seguridad Física');
 
+  // ── RECOMMENDATIONS SECTION ─────────────────────────────────────────────────
+  // Blank spacer
+  rh(row,5); row++;
+
+  // "Recomendaciones" header spanning B:Q
+  sc(row,1,'Recomendaciones',S.tealC);
+  mg(row,1,row,16);
+  rh(row,45); row++;
+
+  // spacer
+  rh(row,4); row++;
+
+  function writeRecs(sk) {
     SCHEMA[sk].cats.forEach(cat => {
       cat.items.forEach(it => {
         const key = sk+'_'+it.n;
@@ -814,36 +886,43 @@ function buildXLSX() {
         const pos = POS[key];
         const letter = SCHEMA[sk].letter;
         const vr = (st.recs||[]).filter(r=>r.text&&r.text.trim());
-        vr.forEach((rec,ri) => {
+
+        vr.forEach((rec, ri) => {
           const rid = ubicacion+'-'+letter+'-'+pos.g+'-'+pos.p+(vr.length>1?(ri+1):'');
-          const ps = ratingStyle(rec.priority);
+          const prioStyle = rS(rec.priority);
 
-          setCell(row,0,'Rec N°',tealStyle);
-          setCell(row,1,rid,centerStyle);
-          setCell(row,2,it.l,tealStyleL); addMerge(row,2,row,5);
-          setCell(row,6,'Prioridad',tealStyle); addMerge(row,6,row,7);
-          row++;
+          // ROW A: Rec N° | recId | item label (E:M) | Prioridad (O:Q)
+          sc(row,1,'Rec N°',S.tealC); mg(row,1,row,2);
+          sc(row,2,rid,S.plainC);
+          sc(row,4,it.l,S.tealL); mg(row,4,row,12);
+          sc(row,14,'Prioridad',S.tealC); mg(row,14,row,16);
+          rh(row,45); row++;
 
-          setCell(row,0,'Descripción',tealStyle);
-          setCell(row,1,rec.text||'',plainStyle); addMerge(row,1,row+2,5);
-          setCell(row,6,rec.priority||'',ps); addMerge(row,6,row,7);
-          row++;
+          // ROW B: Descripción | text (E:M spans 3 rows) | priority value (O:Q)
+          sc(row,1,'Descripción',S.grayD); mg(row,1,row+2,3);
+          sc(row,4,rec.text||'',S.plain); mg(row,4,row+2,12);
+          sc(row,14,rec.priority||'',prioStyle); mg(row,14,row,16);
+          rh(row,45); row++;
 
-          setCell(row,0,'',tealStyle);
-          setCell(row,6,'Costo de Implementación',tealStyle); addMerge(row,6,row,7);
-          row++;
-          setCell(row,0,'',tealStyle);
-          setCell(row,6,'',plainStyle); addMerge(row,6,row,7);
-          row+=2;
+          // ROW C: (merged desc continues) | Costo de Implementación (O:Q)
+          sc(row,14,'Costo de Implementación',S.tealC); mg(row,14,row,16);
+          rh(row,45); row++;
+
+          // ROW D: (merged desc continues) | costo value (O:Q) - blank for user to fill
+          sc(row,14,'',S.plain); mg(row,14,row,16);
+          rh(row,45); row++;
+
+          // spacer
+          rh(row,4); row++;
         });
       });
     });
-    row+=2;
   }
 
-  writeSection('inc','Incendio');
-  writeSection('seg','Seguridad Física');
+  writeRecs('inc');
+  writeRecs('seg');
 
+  // Build worksheet
   const ws = XLSX.utils.aoa_to_sheet(aoa);
 
   // Apply styles
@@ -855,11 +934,15 @@ function buildXLSX() {
   });
 
   ws['!merges'] = merges;
-  ws['!cols'] = [
-    {wch:18},{wch:40},{wch:6},{wch:14},{wch:6},{wch:14},{wch:6},{wch:18}
-  ];
+  ws['!cols'] = colW;
 
-  XLSX.utils.book_append_sheet(wb, ws, ubicacion.substring(0,31));
+  // Row heights
+  const wsRows = [];
+  const maxRow = aoa.length;
+  for(let i=0;i<maxRow;i++) wsRows.push({hpx: rowH[i]||20});
+  ws['!rows'] = wsRows;
+
+  XLSX.utils.book_append_sheet(wb, ws, ubicacion.substring(0,31).replace(/[\\/*?:\[\]]/g,''));
   return wb;
 }
 
@@ -872,6 +955,7 @@ function doExport(){
   const safe = ubicacion.replace(/[^a-zA-Z0-9_\-áéíóúñÁÉÍÓÚÑ ]/g,'').trim()||'sitio';
   XLSX.writeFile(wb, 'auditoria_'+safe+'_'+fecha+'.xlsx');
 }
+
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 build('inc');
