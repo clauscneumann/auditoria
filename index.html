@@ -183,6 +183,7 @@ input.ph-in{display:none;}
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 (function(){
   var s=document.createElement('script');
@@ -566,7 +567,7 @@ function closeModalDirect(){ document.getElementById('modal-bg').classList.remov
 const MSAL_CONFIG = {
   auth: {
     clientId: 'd9e0f052-f962-4add-9ba2-fc1f651e05b3',
-    authority: 'https://login.microsoftonline.com/common',
+    authority: 'https://login.microsoftonline.com/95212959-6a09-4116-a888-a640fdbcf59c',
     redirectUri: 'https://kind-wave-0e06c120f.7.azurestaticapps.net'
   },
   cache: { cacheLocation: 'sessionStorage' }
@@ -640,13 +641,13 @@ async function exportToOneDrive() {
   }
 
   setOdStatus('Generando archivo…', 'ld');
-  const html = buildExcelHTML();
-  const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
-
+  const wb = buildXLSX();
   const ubicacion = META.ubicacion || META.id || 'Sitio';
   const fecha = META.fecha || new Date().toISOString().slice(0, 10);
   const safe = ubicacion.replace(/[^a-zA-Z0-9_\-áéíóúñÁÉÍÓÚÑ ]/g, '').trim() || 'sitio';
-  const fileName = `auditoria_${safe}_${fecha}.xls`;
+  const fileName = 'auditoria_' + safe + '_' + fecha + '.xlsx';
+  const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   const folderPath = 'Auditorías de Riesgo';
 
   setOdStatus('Subiendo a OneDrive…', 'ld');
@@ -678,7 +679,7 @@ async function exportToOneDrive() {
         method: 'PUT',
         headers: {
           Authorization: 'Bearer ' + token,
-          'Content-Type': 'application/vnd.ms-excel'
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         },
         body: blob
       }
@@ -699,143 +700,170 @@ async function exportToOneDrive() {
   if (btn) btn.disabled = false;
 }
 
-// ─── EXCEL EXPORT ─────────────────────────────────────────────────────────────
-function buildExcelHTML() {
+// ─── EXCEL EXPORT (real .xlsx) ───────────────────────────────────────────────
+function buildXLSX() {
+  const wb = XLSX.utils.book_new();
   const rl2t={M:'Malo',R:'Regular',B:'Bueno',MB:'Muy Bueno',NA:'N/A','':''};
-  const ubicacion=META.ubicacion||META.id||'Sitio';
-  const TEAL='#05AEB2'; const WHITE='#FFFFFF'; const GRAY='#848584';
-  const styles={
-    'Muy Bueno':{color:'#1F497D',bg:'#D8E4F8'},
-    'Bueno':{color:'#006100',bg:'#C6EFCE'},
-    'Regular':{color:'#9C5700',bg:'#FFEB9C'},
-    'Malo':{color:'#B00000',bg:'#FBCBCB'},
-    'N/A':{color:'#595959',bg:'#D9D9D9'},
-    'ALTA':{color:'#B00000',bg:'#FBCBCB'},
-    'MEDIA':{color:'#9C5700',bg:'#FFEB9C'},
-    'BAJA':{color:'#006100',bg:'#C6EFCE'},
+  const ubicacion = META.ubicacion||META.id||'Sitio';
+
+  // Colors
+  const TEAL = '05AEB2'; const WHITE = 'FFFFFFFF'; const GRAY = '848584';
+  const RATING_STYLES = {
+    'Malo':     {fgColor:{rgb:'FFFBCBCB'}, fontColor:'FFB00000'},
+    'Regular':  {fgColor:{rgb:'FFFFFFEB9C'}, fontColor:'FF9C5700'},
+    'Bueno':    {fgColor:{rgb:'FFC6EFCE'}, fontColor:'FF006100'},
+    'Muy Bueno':{fgColor:{rgb:'FFD8E4F8'}, fontColor:'FF1F497D'},
+    'N/A':      {fgColor:{rgb:'FFD9D9D9'}, fontColor:'FF595959'},
+    'ALTA':     {fgColor:{rgb:'FFFBCBCB'}, fontColor:'FFB00000'},
+    'MEDIA':    {fgColor:{rgb:'FFFFFFEB9C'}, fontColor:'FF9C5700'},
+    'BAJA':     {fgColor:{rgb:'FFC6EFCE'}, fontColor:'FF006100'},
   };
-  function ratingCell(v){const s=styles[v]||{};return `<td style="text-align:center;background:${s.bg||''};color:${s.color||''};font-weight:bold;padding:6px 8px;border:1px solid #ccc;">${v}</td>`;}
-  function tealCell(txt,colspan=1){return `<td colspan="${colspan}" style="background:${TEAL};color:${WHITE};padding:6px 10px;font-weight:bold;border:1px solid #999;">${txt}</td>`;}
-  function grayCell(txt,colspan=1){return `<td colspan="${colspan}" style="background:${GRAY};color:${WHITE};padding:6px 10px;border:1px solid #999;">${txt}</td>`;}
 
-  let html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-<head><meta charset="UTF-8">
-<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>
-<x:Name>${ubicacion.substring(0,30)}</x:Name>
-<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
-</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+  function cellStyle(bgRgb, fontRgb, bold, wrap, halign) {
+    return {
+      fill: {patternType:'solid', fgColor:{rgb: bgRgb}},
+      font: {name:'Calibri', sz:11, color:{rgb: fontRgb||'FF000000'}, bold:!!bold},
+      alignment: {horizontal: halign||'left', vertical:'center', wrapText:!!wrap},
+      border: {
+        top:{style:'thin',color:{rgb:'FF999999'}},
+        bottom:{style:'thin',color:{rgb:'FF999999'}},
+        left:{style:'thin',color:{rgb:'FF999999'}},
+        right:{style:'thin',color:{rgb:'FF999999'}}
+      }
+    };
+  }
 
-</head><body>
-<table border="1" cellspacing="0" style="font-family:Calibri,Arial;font-size:12px;border-collapse:collapse;">`;
+  const tealStyle = cellStyle('FF05AEB2','FFFFFFFF',true,true,'center');
+  const tealStyleL = cellStyle('FF05AEB2','FFFFFFFF',true,true,'left');
+  const grayStyle  = cellStyle('FF848584','FFFFFFFF',false,true,'left');
+  const plainStyle = cellStyle('FFFFFFFF','FF000000',false,true,'left');
+  const centerStyle= cellStyle('FFFFFFFF','FF000000',false,false,'center');
 
-  html+=`<tr><td colspan="3" style="background:${TEAL};color:${WHITE};font-size:16px;font-weight:bold;padding:8px;border:1px solid #999;">${ubicacion}</td><td></td><td></td><td></td><td></td><td></td></tr>`;
-  html+=`<tr><td></td></tr>`;
+  function ratingStyle(v) {
+    const s = RATING_STYLES[v];
+    if (!s) return plainStyle;
+    return cellStyle(s.fgColor.rgb, s.fontColor, true, false, 'center');
+  }
 
-  function writeSection(sk,sectionLabel){
-    html+=`<tr>`;
-    html+=tealCell(sectionLabel,2);
-    html+=`<td></td><td></td>`;
-    html+=tealCell('Actual');
-    html+=`<td></td>`;
-    html+=tealCell('Rec Cumplida');
-    html+=`<td></td>`;
-    html+=tealCell('Rec N°');
-    html+=`</tr><tr><td></td></tr>`;
+  const aoa = [];
+  const merges = [];
+  const styles = {};
 
-    SCHEMA[sk].cats.forEach(cat=>{
-      const items=cat.items;
-      html+=`<tr>`;
-      html+=`<td rowspan="${items.length}" style="background:${TEAL};color:${WHITE};font-weight:bold;padding:6px 8px;border:1px solid #999;vertical-align:middle;text-align:center;">${cat.n}</td>`;
-      const it0=items[0];
-      const key0=sk+'_'+it0.n;
-      const st0=gs(sk,key0);
-      const rl0=rl2t[st0.rating||''];
-      const pos0=POS[key0];
-      const validRecs0=(st0.recs||[]).filter(r=>r.text&&r.text.trim());
-      const recId0=validRecs0.length?`${ubicacion}-${SCHEMA[sk].letter}-${pos0.g}-${pos0.p}`:'';
-      html+=grayCell(it0.l,2);
-      html+=`<td></td>`;
-      html+=ratingCell(rl0);
-      html+=`<td></td>`;
-      html+=ratingCell(rl0);
-      html+=`<td></td>`;
-      html+=`<td style="text-align:center;padding:4px;border:1px solid #ccc;">${recId0}</td>`;
-      html+=`</tr>`;
-      items.slice(1).forEach(it=>{
-        const key=sk+'_'+it.n;
-        const st=gs(sk,key);
-        const rl=rl2t[st.rating||''];
-        const pos=POS[key];
-        const vr=(st.recs||[]).filter(r=>r.text&&r.text.trim());
-        const recId=vr.length?`${ubicacion}-${SCHEMA[sk].letter}-${pos.g}-${pos.p}`:'';
-        html+=`<tr>`;
-        html+=grayCell(it.l,2);
-        html+=`<td></td>`;
-        html+=ratingCell(rl);
-        html+=`<td></td>`;
-        html+=ratingCell(rl);
-        html+=`<td></td>`;
-        html+=`<td style="text-align:center;padding:4px;border:1px solid #ccc;">${recId}</td>`;
-        html+=`</tr>`;
+  function setCell(r,c,v,style) {
+    while(aoa.length<=r) aoa.push([]);
+    while(aoa[r].length<=c) aoa[r].push('');
+    aoa[r][c]=v;
+    if(style) styles[r+'_'+c]=style;
+  }
+  function addMerge(r1,c1,r2,c2){ merges.push({s:{r:r1,c:c1},e:{r:r2,c:c2}}); }
+
+  let row=0;
+
+  // Header
+  setCell(row,0,ubicacion,tealStyleL); addMerge(row,0,row,7); row++;
+  setCell(row,0,'Nombre:',plainStyle); setCell(row,1,META.nombre,plainStyle);
+  setCell(row,3,'Fecha:',plainStyle);  setCell(row,4,META.fecha,plainStyle);
+  row++;
+  setCell(row,0,'Tipo:',plainStyle);   setCell(row,1,META.tipo,plainStyle); row+=2;
+
+  function writeSection(sk, label) {
+    setCell(row,0,label,tealStyle); addMerge(row,0,row,1);
+    setCell(row,3,'Actual',tealStyle);
+    setCell(row,5,'Rec Cumplida',tealStyle);
+    setCell(row,7,'Rec N°',tealStyle);
+    row++;
+
+    SCHEMA[sk].cats.forEach(cat => {
+      const items = cat.items;
+      const catStart = row;
+      items.forEach((it,iIdx) => {
+        const key = sk+'_'+it.n;
+        const st = gs(sk,key);
+        const rl = rl2t[st.rating||''];
+        const pos = POS[key];
+        const vr = (st.recs||[]).filter(r=>r.text&&r.text.trim());
+        const recId = vr.length ? ubicacion+'-'+SCHEMA[sk].letter+'-'+pos.g+'-'+pos.p : '';
+
+        if(iIdx===0) {
+          setCell(row,0,cat.n,tealStyle);
+        }
+        setCell(row,1,it.l,grayStyle); addMerge(row,1,row,2);
+        setCell(row,3,rl,ratingStyle(rl));
+        setCell(row,5,rl,ratingStyle(rl));
+        setCell(row,7,recId,centerStyle);
+        row++;
       });
-      html+=`<tr><td></td></tr>`;
+      if(items.length>1) addMerge(catStart,0,catStart+items.length-1,0);
+      row++;
     });
 
-    html+=`<tr><td colspan="8" style="background:${TEAL};color:${WHITE};font-weight:bold;font-size:14px;padding:8px;border:1px solid #999;">Recomendaciones</td></tr>`;
-    html+=`<tr><td></td></tr>`;
+    // Recommendations
+    setCell(row,0,'Recomendaciones',tealStyle); addMerge(row,0,row,7); row+=2;
 
-    SCHEMA[sk].cats.forEach(cat=>{
-      cat.items.forEach(it=>{
-        const key=sk+'_'+it.n;
-        const st=gs(sk,key);
-        const pos=POS[key];
-        const letter=SCHEMA[sk].letter;
-        const vr=(st.recs||[]).filter(r=>r.text&&r.text.trim());
-        vr.forEach((rec,ri)=>{
-          const rid=`${ubicacion}-${letter}-${pos.g}-${pos.p}${vr.length>1?(ri+1):''}`;
-          const ps=styles[rec.priority]||{};
-          html+=`<tr>`;
-          html+=tealCell('Rec N°');
-          html+=`<td style="text-align:center;font-weight:bold;padding:6px;border:1px solid #ccc;">${rid}</td>`;
-          html+=`<td colspan="4" style="background:${TEAL};color:${WHITE};font-weight:bold;padding:6px;border:1px solid #999;">${it.l}</td>`;
-          html+=`<td></td>`;
-          html+=tealCell('Prioridad');
-          html+=`</tr>`;
-          html+=`<tr>`;
-          html+=tealCell('Descripción');
-          html+=`<td colspan="5" rowspan="3" style="padding:8px;vertical-align:top;border:1px solid #ccc;white-space:pre-wrap;max-width:400px;">${rec.text}</td>`;
-          html+=`<td></td>`;
-          html+=`<td style="background:${ps.bg||''};color:${ps.color||''};font-weight:bold;text-align:center;padding:6px;border:1px solid #ccc;">${rec.priority||''}</td>`;
-          html+=`</tr>`;
-          html+=`<tr><td></td><td style="background:${TEAL};color:${WHITE};font-weight:bold;text-align:center;padding:6px;border:1px solid #999;">Costo de Implementación</td></tr>`;
-          html+=`<tr><td></td><td style="border:1px solid #ccc;"></td></tr>`;
-          html+=`<tr><td></td></tr>`;
+    SCHEMA[sk].cats.forEach(cat => {
+      cat.items.forEach(it => {
+        const key = sk+'_'+it.n;
+        const st = gs(sk,key);
+        const pos = POS[key];
+        const letter = SCHEMA[sk].letter;
+        const vr = (st.recs||[]).filter(r=>r.text&&r.text.trim());
+        vr.forEach((rec,ri) => {
+          const rid = ubicacion+'-'+letter+'-'+pos.g+'-'+pos.p+(vr.length>1?(ri+1):'');
+          const ps = ratingStyle(rec.priority);
+
+          setCell(row,0,'Rec N°',tealStyle);
+          setCell(row,1,rid,centerStyle);
+          setCell(row,2,it.l,tealStyleL); addMerge(row,2,row,5);
+          setCell(row,6,'Prioridad',tealStyle); addMerge(row,6,row,7);
+          row++;
+
+          setCell(row,0,'Descripción',tealStyle);
+          setCell(row,1,rec.text||'',plainStyle); addMerge(row,1,row+2,5);
+          setCell(row,6,rec.priority||'',ps); addMerge(row,6,row,7);
+          row++;
+
+          setCell(row,0,'',tealStyle);
+          setCell(row,6,'Costo de Implementación',tealStyle); addMerge(row,6,row,7);
+          row++;
+          setCell(row,0,'',tealStyle);
+          setCell(row,6,'',plainStyle); addMerge(row,6,row,7);
+          row+=2;
         });
       });
     });
-    html+=`<tr><td></td></tr>`;
+    row+=2;
   }
 
   writeSection('inc','Incendio');
   writeSection('seg','Seguridad Física');
-  html+=`</table></body></html>`;
-  return html;
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Apply styles
+  Object.entries(styles).forEach(([rc,style]) => {
+    const [r,c] = rc.split('_').map(Number);
+    const addr = XLSX.utils.encode_cell({r,c});
+    if(!ws[addr]) ws[addr]={t:'s',v:''};
+    ws[addr].s = style;
+  });
+
+  ws['!merges'] = merges;
+  ws['!cols'] = [
+    {wch:18},{wch:40},{wch:6},{wch:14},{wch:6},{wch:14},{wch:6},{wch:18}
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, ubicacion.substring(0,31));
+  return wb;
 }
 
+function buildExcelHTML() { return ''; } // kept for compat
+
 function doExport(){
-  const html = buildExcelHTML();
-  const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;
-  const fecha=META.fecha||new Date().toISOString().slice(0,10);
-  const ubicacion=META.ubicacion||META.id||'Sitio';
-  const safe=ubicacion.replace(/[^a-zA-Z0-9_\-áéíóúñÁÉÍÓÚÑ ]/g,'').trim()||'sitio';
-  a.download=`auditoria_${safe}_${fecha}.xls`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const wb = buildXLSX();
+  const ubicacion = META.ubicacion||META.id||'Sitio';
+  const fecha = META.fecha||new Date().toISOString().slice(0,10);
+  const safe = ubicacion.replace(/[^a-zA-Z0-9_\-áéíóúñÁÉÍÓÚÑ ]/g,'').trim()||'sitio';
+  XLSX.writeFile(wb, 'auditoria_'+safe+'_'+fecha+'.xlsx');
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
