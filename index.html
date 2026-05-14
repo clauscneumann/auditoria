@@ -573,13 +573,14 @@ const MSAL_CONFIG = {
   cache: { cacheLocation: 'sessionStorage' }
 };
 
-let msalInstance = null; try { msalInstance = new msal.PublicClientApplication(MSAL_CONFIG); } catch(e){ console.warn("MSAL not loaded"); }
+let msalInstance = null;
 const OD_SCOPES = ['Files.ReadWrite', 'User.Read'];
 let odAccount = null;
 
-// Handle redirect after login
+// Handle redirect after login - called when MSAL script loads
 function initMSAL(){
-  if(!window.msal||!msalInstance) return;
+  if(!window.msal) return;
+  try { msalInstance = new msal.PublicClientApplication(MSAL_CONFIG); } catch(e){ console.warn('MSAL init error',e); return; }
   msalInstance.initialize().then(() => {
   msalInstance.handleRedirectPromise().then(resp => {
     if (resp && resp.account) {
@@ -625,6 +626,12 @@ async function exportToOneDrive() {
   const btn = document.getElementById('od-btn');
   if (btn) { btn.disabled = true; }
   setOdStatus('Conectando con Microsoft…', 'ld');
+
+  if (!msalInstance) {
+    setOdStatus('Error: Microsoft no cargó. Recargá la página e intentá de nuevo.', 'err');
+    if (btn) btn.disabled = false;
+    return;
+  }
 
   let token = await getOdToken();
 
